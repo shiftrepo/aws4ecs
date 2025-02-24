@@ -1,0 +1,11 @@
+{
+  "name": "fargate-dockerhub-app",
+  "version": "1.0.0",
+  "description": "Simple Node.js app for Fargate on Docker Hub example",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "author": "MIT",
+  "license": "ISC"
+}
