@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: CloudFormation Template to verify docker pull from Public Subnet (with EC2 Instance Connect) - VPC selectable - Red Hat AMI - KeyPair Parameter Fix - Egress Protocol Fixed
+
+Parameters:
+  VpcId: # VPC ID を選択するためのパラメータを追加
+    Type: AWS::EC2::VPC::Id
+    Description: Select an existing VPC ID
+  PublicSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public Subnet ID to launch EC2 instance in
+  KeyName: # キーペアを選択するためのパラメータを追加
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Select an existing EC2 KeyPair for SSH access (optional)
+    Default: "" # デフォルトは空 (キーペアなし)
+
+Conditions: # 条件セクションを追加
+  UseKeyPairParameter: !Not [!Equals [!Ref KeyName, ""]] # KeyNameパラメータが空でない場合、True
+
+Resources:
+  # EC2 Instance Security Group (インバウンドSSH許可, アウトバウンド許可)
+  TestEC2InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: TestEC2InstanceSecurityGroup
+      GroupDescription: Allow SSH inbound and all outbound traffic
+      VpcId: !Ref VpcId # パラメータで指定された VPC ID を参照
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0 # **EC2 Instance Connect 接続のため、SSHを全てのアドレスから許可 (!!! 警告: 本番環境ではセキュリティリスクがあります !!!)**
+      SecurityGroupEgress: # SecurityGroupEgress を修正
+        - IpProtocol: tcp # TCP プロトコル許可
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp # UDP プロトコル許可
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: icmp # ICMP プロトコル許可 (ping など)
+          FromPort: -1 # ICMP タイプ -1 (全て)
+          ToPort: -1 # ICMP コード -1 (全て)
+          CidrIp: 0.0.0.0/0
+
+  # EC2 Instance (Red Hat Enterprise Linux 8, t3.micro)
+  TestEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0c7af5fe939f2677f # Red Hat Enterprise Linux 8 AMI (us-east-1, x86_64)
+      InstanceType: t3.micro
+      SubnetId: !Ref PublicSubnetId
+      SecurityGroupIds:
+        - !GetAtt TestEC2InstanceSecurityGroup.GroupId
+      IamInstanceProfile: !Ref EC2InstanceProfile # Session Manager 接続に必要な IAM Instance Profile を追加
+      KeyName: !If [UseKeyPairParameter, !Ref KeyName, !Ref "AWS::NoValue"] # 条件付きで KeyName を設定
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          dnf update -y
+          dnf install -y docker
+          systemctl start docker
+          docker pull nginx:latest
+          if [[ $? -eq 0 ]]; then
+            echo "Docker pull nginx:latest SUCCESS"
+          else
+            echo "Docker pull nginx:latest FAILED"
+            exit 1
+          fi
+          echo "UserData script finished" # UserDataスクリプトの終了を明示的にログ出力
+
+  # EC2 Instance Role (Session Manager 接続に必要な IAM Role)
+  EC2InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore # Session Manager 用の AWS管理ポリシーを追加
+
+  # EC2 Instance Profile (IAM Role を EC2 インスタンスに関連付け)
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2InstanceRole
+
+Outputs:
+  EC2InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref TestEC2Instance

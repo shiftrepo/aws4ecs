@@ -1,0 +1,91 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: ECS Fargate Service with Docker Hub Image (Existing VPC/Subnet)
+
+Parameters:
+  ClusterName:
+    Type: String
+    Description: ECS Cluster Name
+    Default: FargateClusterDockerHub
+
+  DockerHubRepoName:
+    Type: String
+    Description: Docker Hub Repository Name
+    Default: mitlabo/ai4aws:latest
+
+  ExistingVpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Existing VPC ID
+    Default: vpc-0bcccc94efa7bdc86
+
+  ExistingPublicSubnetId:
+    Type: AWS::EC2::Subnet::Id
+    Description: Existing Public Subnet ID
+    Default: subnet-0376dd45fd46d4cf5
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Ref ClusterName
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy  # ✅ Docker HubからイメージをPullするために必要なポリシーを追加
+
+  FargateTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: FargateTaskDefDockerHub
+      Cpu: "256"
+      Memory: "512"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: WebAppContainer
+          Image: !Ref DockerHubRepoName
+          PortMappings:
+            - ContainerPort: 80
+
+  ECSServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: ECSServiceSecurityGroup
+      GroupDescription: Allow HTTP inbound traffic
+      VpcId: !Ref ExistingVpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  FargateService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: FargateServiceDockerHub
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref FargateTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref ExistingPublicSubnetId
+          SecurityGroups:
+            - !GetAtt ECSServiceSecurityGroup.GroupId
+          AssignPublicIp: ENABLED  # 🌐 インターネットアクセスを有効化
+
+Outputs:
+  ServiceURL:
+    Description: URL of the Fargate Service
+    Value: !Sub "http://${FargateService.Name}"
