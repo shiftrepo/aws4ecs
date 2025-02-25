@@ -1,12 +1,10 @@
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 as installer
 ARG EXE_FILENAME=awscli-exe-linux-x86_64.zip
 
-# aws cli
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o $EXE_FILENAME
-
-COPY $EXE_FILENAME .
+#COPY $EXE_FILENAME .
 RUN yum update -y \
-  && yum install -y unzip \
+  && yum install -y unzip curl \
+  && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o $EXE_FILENAME
   && unzip $EXE_FILENAME \
   # The --bin-dir is specified so that we can copy the
   # entire bin directory from the installer stage into
