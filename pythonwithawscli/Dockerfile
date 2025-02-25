@@ -3,10 +3,12 @@ ARG EXE_FILENAME=awscli-exe-linux-x86_64.zip
 
 RUN yum update -y \
   && yum install -y unzip curl \
-  && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+  && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o $EXE_FILENAME
+
+"awscliv2.zip"
 
 # aws cli
-COPY $EXE_FILENAME .
+#COPY $EXE_FILENAME .
 RUN yum update -y \
   && yum install -y unzip \
   && unzip $EXE_FILENAME \
