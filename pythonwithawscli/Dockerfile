@@ -14,7 +14,7 @@ FROM public.ecr.aws/amazonlinux/amazonlinux:2
 # 必要パッケージインストール
 RUN yum update -y \
   && yum install -y less groff tar vi openssl openssl-devel libffi-devel bzip2-devel \
-  zlib-devel readline-devel sqlite-devel xz-devel gcc make wget \
+  zlib-devel readline-devel sqlite-devel xz-devel gcc make wget gzip \
   && yum clean all
 
 COPY --from=installer /usr/local/aws-cli/ /usr/local/aws-cli/
