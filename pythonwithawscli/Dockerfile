@@ -31,4 +31,5 @@ RUN yum install -y python3 python-pip && yum clean all
 RUN python3 -m pip install --upgrade pip --no-cache-dir && python3 -m pip --no-cache install -r /requirements.txt --no-cache-dir
 
 WORKDIR /aws
-ENTRYPOINT ["/usr/local/bin/aws"]
+#ENTRYPOINT ["/usr/local/bin/aws"]
+CMD ["/bin/bash"]
