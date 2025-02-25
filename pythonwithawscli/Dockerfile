@@ -3,15 +3,13 @@ ARG EXE_FILENAME=awscli-exe-linux-x86_64.zip
 
 RUN yum update -y \
   && yum install -y unzip curl \
-  && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o $EXE_FILENAME
-
-"awscliv2.zip"
+  && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 
 # aws cli
 #COPY $EXE_FILENAME .
 RUN yum update -y \
   && yum install -y unzip \
-  && unzip $EXE_FILENAME \
+  && unzip awscliv2.zip \
   # The --bin-dir is specified so that we can copy the
   # entire bin directory from the installer stage into
   # into /usr/local/bin of the final stage without
@@ -22,7 +20,7 @@ RUN yum update -y \
 # software
 FROM public.ecr.aws/amazonlinux/amazonlinux:2
 RUN yum update -y \
-  && yum install -y less groff tar unzip vi\
+  && yum install -y less groff tar vi \
   && yum clean all
 COPY --from=installer /usr/local/aws-cli/ /usr/local/aws-cli/
 COPY --from=installer /aws-cli-bin/ /usr/local/bin/
