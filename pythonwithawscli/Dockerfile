@@ -25,9 +25,18 @@ RUN yum update -y \
 COPY --from=installer /usr/local/aws-cli/ /usr/local/aws-cli/
 COPY --from=installer /aws-cli-bin/ /usr/local/bin/
 
-# python
+# pythonはパッケージでは最新版はリリースされていない。
 COPY requirements.txt /requirements.txt
-RUN yum install -y python3 python-pip && yum clean all
+RUN yum groupinstall -y "Development Tools" \ &&
+    yum install -y gcc openssl-devel libffi-devel bzip2-devel wget make zlib-devel readline-devel sqlite-devel xz-devel \ &&
+    cd /usr/src \ &&
+    wget https://www.python.org/ftp/python/3.12.2/Python-3.12.2.tgz \ &&
+    tar xzf Python-3.12.2.tgz \ &&
+    cd Python-3.12.2 \ &&
+    ./configure --enable-optimizations \ &&
+    make altinstall  # ← システムのPythonを上書きしない
+RUN yum clean all
+#RUN yum install -y python3 python-pip && yum clean all
 RUN python3 -m pip install --upgrade pip --no-cache-dir && python3 -m pip --no-cache install -r /requirements.txt --no-cache-dir
 
 WORKDIR /aws
