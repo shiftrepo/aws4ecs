@@ -2,6 +2,8 @@ FROM public.ecr.aws/amazonlinux/amazonlinux:2 as installer
 ARG EXE_FILENAME=awscli-exe-linux-x86_64.zip
 
 # aws cli
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o $EXE_FILENAME
+
 COPY $EXE_FILENAME .
 RUN yum update -y \
   && yum install -y unzip \
