@@ -4,7 +4,7 @@ ARG EXE_FILENAME=awscli-exe-linux-x86_64.zip
 #COPY $EXE_FILENAME .
 RUN yum update -y \
   && yum install -y unzip curl \
-  && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o $EXE_FILENAME
+  && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o $EXE_FILENAME \
   && unzip $EXE_FILENAME \
   # The --bin-dir is specified so that we can copy the
   # entire bin directory from the installer stage into
