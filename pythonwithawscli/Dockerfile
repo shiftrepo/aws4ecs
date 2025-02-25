@@ -1,10 +1,14 @@
 FROM public.ecr.aws/amazonlinux/amazonlinux:2 as installer
 ARG EXE_FILENAME=awscli-exe-linux-x86_64.zip
 
-#COPY $EXE_FILENAME .
 RUN yum update -y \
-  && yum install -y unzip curl \
-  && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o $EXE_FILENAME \
+  && yum install -y curl \
+  && curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+
+# aws cli
+COPY $EXE_FILENAME .
+RUN yum update -y \
+  && yum install -y unzip \
   && unzip $EXE_FILENAME \
   # The --bin-dir is specified so that we can copy the
   # entire bin directory from the installer stage into
@@ -16,7 +20,7 @@ RUN yum update -y \
 # software
 FROM public.ecr.aws/amazonlinux/amazonlinux:2
 RUN yum update -y \
-  && yum install -y less groff tar unzip vi \
+  && yum install -y less groff tar unzip vi\
   && yum clean all
 COPY --from=installer /usr/local/aws-cli/ /usr/local/aws-cli/
 COPY --from=installer /aws-cli-bin/ /usr/local/bin/
@@ -25,9 +29,6 @@ COPY --from=installer /aws-cli-bin/ /usr/local/bin/
 COPY requirements.txt /requirements.txt
 RUN yum install -y python3 python-pip && yum clean all
 RUN python3 -m pip install --upgrade pip --no-cache-dir && python3 -m pip --no-cache install -r /requirements.txt --no-cache-dir
-
-graphRAG.py
-COPY graphRAG.py /graphRAG.py
 
 WORKDIR /aws
 ENTRYPOINT ["/usr/local/bin/aws"]
