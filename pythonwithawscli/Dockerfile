@@ -16,7 +16,7 @@ RUN yum update -y \
 # software
 FROM public.ecr.aws/amazonlinux/amazonlinux:2
 RUN yum update -y \
-  && yum install -y less groff tar unzip vi\
+  && yum install -y less groff tar unzip vi \
   && yum clean all
 COPY --from=installer /usr/local/aws-cli/ /usr/local/aws-cli/
 COPY --from=installer /aws-cli-bin/ /usr/local/bin/
