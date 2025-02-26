@@ -1,0 +1,207 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudFormation Template to launch an EC2 instance with Docker and Python 3.12 in a container, with pip libraries installed.
+  Ports 7474 and 7687 are open for external access. Resources are suffixed with SHIFT-graphRAG.
+
+Parameters:
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Select an existing EC2 KeyPair for SSH access (optional)
+    Default: ""
+
+Conditions:
+  UseKeyPairParameter: !Not [!Equals [!Ref KeyName, ""]]
+
+Resources:
+  # VPC
+  VPCSHIFTgraphRAG:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: VPC-SHIFT-graphRAG
+
+  # Internet Gateway
+  InternetGatewaySHIFTgraphRAG:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: IGW-SHIFT-graphRAG
+
+  AttachGatewaySHIFTgraphRAG:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPCSHIFTgraphRAG
+      InternetGatewayId: !Ref InternetGatewaySHIFTgraphRAG
+
+  # Public Subnet
+  PublicSubnetSHIFTgraphRAG:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCSHIFTgraphRAG
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: PublicSubnet-SHIFT-graphRAG
+
+  # Private Subnet
+  PrivateSubnetSHIFTgraphRAG:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPCSHIFTgraphRAG
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      Tags:
+        - Key: Name
+          Value: PrivateSubnet-SHIFT-graphRAG
+
+  # Route Table for Public Subnet
+  PublicRouteTableSHIFTgraphRAG:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPCSHIFTgraphRAG
+      Tags:
+        - Key: Name
+          Value: PublicRT-SHIFT-graphRAG
+
+  PublicRouteSHIFTgraphRAG:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTableSHIFTgraphRAG
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGatewaySHIFTgraphRAG
+
+  PublicSubnetRouteTableAssociationSHIFTgraphRAG:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetSHIFTgraphRAG
+      RouteTableId: !Ref PublicRouteTableSHIFTgraphRAG
+
+  # Security Group
+  EC2SecurityGroupSHIFTgraphRAG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: EC2SG-SHIFT-graphRAG
+      GroupDescription: Allow SSH, Neo4j ports (7474, 7687)
+      VpcId: !Ref VPCSHIFTgraphRAG
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 7474
+          ToPort: 7474
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 7687
+          ToPort: 7687
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: EC2SG-SHIFT-graphRAG
+
+  # IAM Role for EC2
+  EC2InstanceRoleSHIFTgraphRAG:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+
+  EC2InstanceProfileSHIFTgraphRAG:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2InstanceRoleSHIFTgraphRAG
+
+  # EC2 Instance
+  EC2InstanceSHIFTgraphRAG:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0c7af5fe939f2677f  # Red Hat Enterprise Linux 8 (us-east-1)
+      InstanceType: t3.small
+      SubnetId: !Ref PublicSubnetSHIFTgraphRAG
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroupSHIFTgraphRAG
+      IamInstanceProfile: !Ref EC2InstanceProfileSHIFTgraphRAG
+      KeyName: !If [UseKeyPairParameter, !Ref KeyName, !Ref "AWS::NoValue"]
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda  # ルートデバイス
+          Ebs:
+            VolumeSize: 100      # ✅ ディスクサイズ (GB)
+            VolumeType: gp3      # ボリュームタイプ (推奨: gp3)
+            DeleteOnTermination: true
+      Tags:
+        - Key: Name
+          Value: EC2Instance-SHIFT-graphRAG
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          # Install Docker
+          dnf install -y docker
+          systemctl start docker
+          systemctl enable docker
+
+          # Create Docker network for container communication
+          docker network create shift-graphRAG-net
+
+          # Install Docker container with Python 3.12 and pip base amazoncli
+          docker pull docker.io/mitlabo/pythonwithawscli:latest
+          docker run -d \
+            --name python-aws \
+            --network shift-graphRAG-net \
+            docker.io/mitlabo/pythonwithawscli tail -F /dev/null
+
+          docker run -itd \
+            --name python-container \
+            --network shift-graphRAG-net \
+            docker.io/mitlabo/pythonwithawscli:latest tail -F /dev/null
+
+          # Install Python libraries in the container
+          docker exec python-container pip install llama-index-llms-litellm llama-index-embeddings-litellm boto3 llama-index llama-index-llms-openai llama-index-embeddings-openai llama-index-graph-stores-neo4j llama-index-readers-wikipedia wikipedia
+
+          # Install and run Neo4j container
+          docker pull docker.io/library/neo4j:5.22.0-community
+          docker run -d \
+            --name neo4j \
+            --network shift-graphRAG-net \
+            -p 7474:7474 -p 7687:7687 \
+            -e NEO4J_apoc_export_file_enabled=true \
+            -e NEO4J_apoc_import_file_enabled=true \
+            -e NEO4J_apoc_import_file_use__neo4j__config=true \
+            -e NEO4J_PLUGINS='["apoc"]' \
+            -e NEO4J_AUTH=neo4j/password \
+            docker.io/library/neo4j:5.22.0-community
+
+Outputs:
+  VPCId:
+    Description: Created VPC ID
+    Value: !Ref VPCSHIFTgraphRAG
+  PublicSubnetId:
+    Description: Created Public Subnet ID
+    Value: !Ref PublicSubnetSHIFTgraphRAG
+  PrivateSubnetId:
+    Description: Created Private Subnet ID
+    Value: !Ref PrivateSubnetSHIFTgraphRAG
+  EC2InstanceId:
+    Description: Launched EC2 Instance ID
+    Value: !Ref EC2InstanceSHIFTgraphRAG
+  PublicIP:
+    Description: Public IP of the EC2 Instance
+    Value: !GetAtt EC2InstanceSHIFTgraphRAG.PublicIp
