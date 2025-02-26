@@ -43,8 +43,8 @@ RUN python3 --version && pip3 --version
 
 # requirements インストール
 COPY requirements.txt /requirements.txt
-RUN pip3 install --upgrade pip --no-cache-dir \
-    && pip3 install -r /requirements.txt --no-cache-dir
+#RUN pip3 install --upgrade pip --no-cache-dir \
+#    && pip3 install -r /requirements.txt --no-cache-dir
 
 WORKDIR /aws
 CMD ["/bin/bash"]
