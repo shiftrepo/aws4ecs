@@ -199,9 +199,9 @@ Resources:
           systemctl enable docker
 
           # Docker Compose インストール
-          curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          chmod +x /usr/local/bin/docker-compose
-          ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+          #curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          #chmod +x /usr/local/bin/docker-compose
+          #ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 
           echo "export AWS_ACCESS_KEY_ID='${AccessKeyIdParam}'" >> /root/.bashrc
           echo "export AWS_SECRET_ACCESS_KEY='${SecretAccessKeyParam}'" >> /root/.bashrc
@@ -242,7 +242,7 @@ Resources:
           #docker exec python-aws pip install llama-index-llms-litellm llama-index-embeddings-litellm boto3 llama-index llama-index-llms-openai llama-index-embeddings-openai llama-index-graph-stores-neo4j llama-index-readers-wikipedia wikipedia
 
           # Install and run Neo4j container
-          docker pull docker.io/library/neo4j:5.22.0-community
+          docker pull docker.io/library/neo4j:5.26.3-community
           docker run -d \
             --name neo4j \
             --network shift-graphRAG-net \
