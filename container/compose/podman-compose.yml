@@ -6,7 +6,7 @@ networks:
 
 services:
   python-aws:
-    image: docker.io/mitlabo/pythonwithawscli:latest
+    image: docker.io/mitlabo/shift4aws:latest
     container_name: python-aws
     networks:
       - shift-graphRAG-net

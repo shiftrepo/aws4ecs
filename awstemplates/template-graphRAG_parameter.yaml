@@ -197,20 +197,29 @@ Resources:
           dnf install -y docker awscli git
           systemctl start docker
           systemctl enable docker
-          
+
+          # Docker Compose インストール
+          curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          chmod +x /usr/local/bin/docker-compose
+          ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+
           echo "export AWS_ACCESS_KEY_ID='${AccessKeyIdParam}'" >> /root/.bashrc
           echo "export AWS_SECRET_ACCESS_KEY='${SecretAccessKeyParam}'" >> /root/.bashrc
           echo "export AWS_DEFAULT_REGION='${RegionNameParam}'" >> /root/.bashrc
 
           mkdir -p /root/.ssh
-          echo ${GithubPrivateKey} > /root/.ssh/id_ed25519
+          echo "${GithubPrivateKey}" > /root/.ssh/id_ed25519
           chmod 400 /root/.ssh/id_ed25519
 
           cat <<EOF > /root/.ssh/config
           Host github.com
             IdentityFile ~/.ssh/id_ed25519
             User git
+          Host github.com
+            StrictHostKeyChecking no
+            UserKnownHostsFile=/dev/null
           EOF
+          #echo -e "Host github.com\n  StrictHostKeyChecking no\n  UserKnownHostsFile=/dev/null" >> ~/.ssh/config
 
           git clone git@github.com:shiftrepo/aws.git /root/aws.git
 
