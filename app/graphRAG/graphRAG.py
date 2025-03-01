@@ -8,7 +8,7 @@ from llama_index.graph_stores.neo4j import Neo4jPropertyGraphStore
 from llama_index.core import PropertyGraphIndex
 import logging
 
-#logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 #from llama_index.core import set_global_handler
 
@@ -35,7 +35,7 @@ Settings.embed_model = embedding
 
 # WikipediaReaderの使用
 reader = WikipediaReader()
-documents = reader.load_data(pages=["ルーク・スカイウォーカー"], lang_prefix="ja")
+documents = reader.load_data(pages=["野比のび太"], lang_prefix="ja")
 
 # Neo4jへの接続設定
 graph_store = Neo4jPropertyGraphStore(
@@ -67,7 +67,7 @@ retriever = index.as_retriever(
 )
 
 
-query = "ルーク・スカイウォーカーの家族の名前を教えて"
+query = "野比のび太の家族の名前を教えて"
 
 results = retriever.retrieve(query)
 for record in results:
