@@ -9,6 +9,31 @@ Parameters:
     Description: Select an existing EC2 KeyPair for SSH access (optional)
     Default: ""
 
+  AccessKeyIdParam:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Access Key ID from Parameter Store
+    Default: "/adminOpe/accessKey/aws_access_key_id" # Parameter Store のパラメータ名
+
+  SecretAccessKeyParam:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Secret Access Key from Parameter Store
+    Default: "/adminOpe/accessKey/aws_secret_access_key" # Parameter Store のパラメータ名
+
+  RegionNameParam:
+    Type: AWS::SSM::Parameter::Value<String>
+    Description: Secret Access Key from Parameter Store
+    Default: "/adminOpe/accessKey/aws_region_name" # Parameter Store のパラメータ名
+
+  GithubPrivateKey:
+    Type: AWS::SSM::Parameter::Value<String> # 👈  AWS::SSM::Parameter::Value<String> を指定
+    Description: GitHub private key from Parameter Store
+    Default: "/adminOpe/github/privateKey" # 👈 Parameter Store のパラメータ名 (SecureString)
+
+  GithubPublicKey:
+    Type: AWS::SSM::Parameter::Value<String> # 👈  AWS::SSM::Parameter::Value<String> を指定
+    Description: GitHub public key from Parameter Store
+    Default: "/adminOpe/github/publicKey" # 👈 Parameter Store のパラメータ名 (SecureString)
+
 Conditions:
   UseKeyPairParameter: !Not [!Equals [!Ref KeyName, ""]]
 
@@ -123,6 +148,20 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+      Policies: # インラインポリシーを追加
+        - PolicyName: ParameterStoreAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource: # Parameter Store パラメータの ARN を指定 (後で修正)
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/adminOpe/accessKey/aws_access_key_id"
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/adminOpe/accessKey/aws_secret_access_key"
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/adminOpe/accessKey/aws_region_name"
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/adminOpe/github/privateKey"
+                  - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/adminOpe/github/publicKey"
 
   EC2InstanceProfileSHIFTgraphRAG:
     Type: AWS::IAM::InstanceProfile
@@ -154,9 +193,26 @@ Resources:
         Fn::Base64: !Sub |
           #!/bin/bash
           # Install Docker
-          dnf install -y docker
+          set -x
+          dnf install -y docker awscli git
           systemctl start docker
           systemctl enable docker
+          
+          echo "export AWS_ACCESS_KEY_ID='${AccessKeyIdParam}'" >> /root/.bashrc
+          echo "export AWS_SECRET_ACCESS_KEY='${SecretAccessKeyParam}'" >> /root/.bashrc
+          echo "export AWS_DEFAULT_REGION='${RegionNameParam}'" >> /root/.bashrc
+
+          mkdir -p /root/.ssh
+          echo ${GithubPrivateKey} > /root/.ssh/id_ed25519
+          chmod 400 /root/.ssh/id_ed25519
+
+          cat <<EOF > /root/.ssh/config
+          Host github.com
+            IdentityFile ~/.ssh/id_ed25519
+            User git
+          EOF
+
+          git clone git@github.com:shiftrepo/aws.git /root/aws.git
 
           # Create Docker network for container communication
           docker network create shift-graphRAG-net
@@ -168,13 +224,13 @@ Resources:
             --network shift-graphRAG-net \
             docker.io/mitlabo/shift4aws:latest tail -F /dev/null
 
-          docker run -itd \
-            --name python-container \
-            --network shift-graphRAG-net \
-            docker.io/mitlabo/shift4aws:latest tail -F /dev/null
+          #docker run -itd \
+          #  --name python-container \
+          #  --network shift-graphRAG-net \
+          #  docker.io/mitlabo/shift4aws:latest tail -F /dev/null
 
           # Install Python libraries in the container
-          docker exec python-container pip install llama-index-llms-litellm llama-index-embeddings-litellm boto3 llama-index llama-index-llms-openai llama-index-embeddings-openai llama-index-graph-stores-neo4j llama-index-readers-wikipedia wikipedia
+          #docker exec python-aws pip install llama-index-llms-litellm llama-index-embeddings-litellm boto3 llama-index llama-index-llms-openai llama-index-embeddings-openai llama-index-graph-stores-neo4j llama-index-readers-wikipedia wikipedia
 
           # Install and run Neo4j container
           docker pull docker.io/library/neo4j:5.22.0-community
@@ -187,7 +243,7 @@ Resources:
             -e NEO4J_apoc_import_file_use__neo4j__config=true \
             -e NEO4J_PLUGINS='["apoc"]' \
             -e NEO4J_AUTH=neo4j/password \
-            docker.io/library/neo4j:5.22.0-community
+            docker.io/library/neo4j:5.26.3-community
 
 Outputs:
   VPCId:

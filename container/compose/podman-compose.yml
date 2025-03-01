@@ -1,0 +1,29 @@
+version: '3.8'
+
+networks:
+  shift-graphRAG-net:
+    driver: bridge
+
+services:
+  python-aws:
+    image: docker.io/mitlabo/pythonwithawscli:latest
+    container_name: python-aws
+    networks:
+      - shift-graphRAG-net
+    command: tail -F /dev/null
+
+  neo4j:
+    image: docker.io/library/neo4j:5.26.3-community
+    container_name: neo4j
+    networks:
+      - shift-graphRAG-net
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_apoc_export_file_enabled=true
+      - NEO4J_apoc_import_file_enabled=true
+      - NEO4J_apoc_import_file_use__neo4j__config=true
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_AUTH=neo4j/password
+
