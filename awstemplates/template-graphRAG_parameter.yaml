@@ -203,6 +203,16 @@ Resources:
           #chmod +x /usr/local/bin/docker-compose
           #ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
 
+          #あとでロールに切り替える予定
+          mkdir -p /root/.aws
+          echo "[default]" > /root/.aws/credentials
+          echo "aws_access_key_id='${AccessKeyIdParam}'" >> /root/.aws/credentials
+          echo "aws_secret_access_key='${SecretAccessKeyParam}'" >> /root/.aws/credentials
+          chmod 600 /root/.aws/credentials
+          echo "[default]" > /root/.aws/config
+          echo "region='${RegionNameParam}'" >> /root/.aws/config
+          chmod 600 /root/.aws/config
+
           echo "export AWS_ACCESS_KEY_ID='${AccessKeyIdParam}'" >> /root/.bashrc
           echo "export AWS_SECRET_ACCESS_KEY='${SecretAccessKeyParam}'" >> /root/.bashrc
           echo "export AWS_DEFAULT_REGION='${RegionNameParam}'" >> /root/.bashrc
@@ -240,6 +250,8 @@ Resources:
 
           # Install Python libraries in the container
           #docker exec python-aws pip install llama-index-llms-litellm llama-index-embeddings-litellm boto3 llama-index llama-index-llms-openai llama-index-embeddings-openai llama-index-graph-stores-neo4j llama-index-readers-wikipedia wikipedia
+
+          docker cp ~/aws.git/app/. python-aws:/root/app
 
           # Install and run Neo4j container
           docker pull docker.io/library/neo4j:5.26.3-community
