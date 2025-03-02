@@ -251,6 +251,14 @@ Resources:
           # Install Python libraries in the container
           #docker exec python-aws pip install llama-index-llms-litellm llama-index-embeddings-litellm boto3 llama-index llama-index-llms-openai llama-index-embeddings-openai llama-index-graph-stores-neo4j llama-index-readers-wikipedia wikipedia
 
+          # コンテナ内の .bashrc に環境変数を設定
+          echo "export AWS_ACCESS_KEY_ID='${AccessKeyIdParam}'" >> /root/.bashrc
+          echo "export AWS_SECRET_ACCESS_KEY='${SecretAccessKeyParam}'" >> /root/.bashrc
+          echo "export AWS_DEFAULT_REGION='${RegionNameParam}'" >> /root/.bashrc
+
+          docker exec my_container bash -c "echo 'export AWS_ACCESS_KEY_ID=${AccessKeyIdParam}' >> ~/.bashrc"
+          docker exec my_container bash -c "echo 'export AWS_SECRET_ACCESS_KEY=${SecretAccessKeyParam}' >> ~/.bashrc"
+          docker exec my_container bash -c "echo 'export AWS_DEFAULT_REGION=${RegionNameParam}' >> ~/.bashrc"
           docker cp ~/aws.git/app/. python-aws:/root/app
 
           # Install and run Neo4j container
