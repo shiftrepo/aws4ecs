@@ -34,6 +34,17 @@ Parameters:
     Description: GitHub public key from Parameter Store
     Default: "/adminOpe/github/publicKey" # 👈 Parameter Store のパラメータ名 (SecureString)
 
+  InstanceType:
+    Type: String
+    Description: Select the instance type (t3 series only)
+    Default: t3.micro
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+
 Conditions:
   UseKeyPairParameter: !Not [!Equals [!Ref KeyName, ""]]
 
@@ -174,7 +185,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       ImageId: ami-0c7af5fe939f2677f  # Red Hat Enterprise Linux 8 (us-east-1)
-      InstanceType: t3.small
+      InstanceType: !Ref InstanceType
       SubnetId: !Ref PublicSubnetSHIFTgraphRAG
       SecurityGroupIds:
         - !Ref EC2SecurityGroupSHIFTgraphRAG
@@ -252,13 +263,9 @@ Resources:
           #docker exec python-aws pip install llama-index-llms-litellm llama-index-embeddings-litellm boto3 llama-index llama-index-llms-openai llama-index-embeddings-openai llama-index-graph-stores-neo4j llama-index-readers-wikipedia wikipedia
 
           # コンテナ内の .bashrc に環境変数を設定
-          echo "export AWS_ACCESS_KEY_ID='${AccessKeyIdParam}'" >> /root/.bashrc
-          echo "export AWS_SECRET_ACCESS_KEY='${SecretAccessKeyParam}'" >> /root/.bashrc
-          echo "export AWS_DEFAULT_REGION='${RegionNameParam}'" >> /root/.bashrc
-
-          docker exec my_container bash -c "echo 'export AWS_ACCESS_KEY_ID=${AccessKeyIdParam}' >> ~/.bashrc"
-          docker exec my_container bash -c "echo 'export AWS_SECRET_ACCESS_KEY=${SecretAccessKeyParam}' >> ~/.bashrc"
-          docker exec my_container bash -c "echo 'export AWS_DEFAULT_REGION=${RegionNameParam}' >> ~/.bashrc"
+          docker exec python-aws bash -c "echo 'export AWS_ACCESS_KEY_ID=${AccessKeyIdParam}' >> ~/.bashrc"
+          docker exec python-aws bash -c "echo 'export AWS_SECRET_ACCESS_KEY=${SecretAccessKeyParam}' >> ~/.bashrc"
+          docker exec python-aws bash -c "echo 'export AWS_DEFAULT_REGION=${RegionNameParam}' >> ~/.bashrc"
           docker cp ~/aws.git/app/. python-aws:/root/app
 
           # Install and run Neo4j container
