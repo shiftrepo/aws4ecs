@@ -1,0 +1,11 @@
+boto3
+tenacity
+llama_index
+llama-index
+llama-index-llms-bedrock
+langchain-community
+argparse
+llama-index-embeddings-bedrock
+llama-index-readers-wikipedia
+llama-index-graph-stores-neo4j
+wikipedia
